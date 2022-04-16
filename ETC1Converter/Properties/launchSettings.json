@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "ETC1Converter": {
+      "commandName": "Project",
+      "nativeDebugging": false
+    }
+  }
+}
