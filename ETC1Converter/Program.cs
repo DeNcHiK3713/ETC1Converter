@@ -1,6 +1,8 @@
 ﻿using AssetsTools.NET;
 using AssetsTools.NET.Extra;
 using ETC1Converter;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
 
 var startDirectory = Path.Combine(Directory.GetCurrentDirectory(), "astc");
 var files = Directory.GetFiles(startDirectory, "*.unity3d", SearchOption.TopDirectoryOnly);
@@ -34,9 +36,10 @@ foreach (var file in files)
 
             if (format == TextureFormat.ASTC_RGB_6x6)
             {
-                var newFormat = TextureFormat.ETC_RGB4;
                 var rawData = TextureHelper.GetRawTextureBytes(textureFile, bundle.file);
                 var data = TextureEncoderDecoder.Decode(rawData, textureFile.m_Width, textureFile.m_Height, format);
+                using var image = Image.LoadPixelData<Rgba32>(data, textureFile.m_Width, textureFile.m_Height);
+                var newFormat = IsTransparent(image) ? TextureFormat.ARGB4444 : TextureFormat.ETC_RGB4;
                 Thread.Sleep(10);
                 var newData = TextureEncoderDecoder.Encode(data, textureFile.m_Width, textureFile.m_Height, newFormat);
                 Thread.Sleep(10);
@@ -77,4 +80,26 @@ foreach (var file in files)
 
     assetManager.UnloadAll();
     Console.WriteLine($"{file} processed...");
+}
+
+static bool IsTransparent(Image<Rgba32> image)
+{
+    bool result = false;
+    image.ProcessPixelRows(pixelAccessor =>
+    {
+        for (var y = 0; y < image.Height; y++)
+        {
+            var row = pixelAccessor.GetRowSpan(y);
+            for (var x = 0; x < row.Length; x++)
+            {
+                var pixel = row[x];
+
+                if (pixel.A < byte.MaxValue)
+                {
+                    result = true;
+                }
+            }
+        }
+    });
+    return result;
 }
